@@ -1,4 +1,5 @@
 class UserData {
+  final int id;
   final String fullName;
   final String phoneNumber;
   final String identifyID;
@@ -8,6 +9,7 @@ class UserData {
   final String? job;
 
   UserData({
+    required this.id,
     required this.fullName,
     required this.phoneNumber,
     required this.identifyID,
@@ -19,6 +21,7 @@ class UserData {
 
   factory UserData.fromJson(Map<String, dynamic> json) {
     return UserData(
+      id: json['id'] ?? '',
       fullName: json['full_name'] ?? '',
       phoneNumber: json['phone_number']?? '',
       identifyID: json['identify_ID']?? '',

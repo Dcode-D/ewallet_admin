@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
@@ -19,34 +20,42 @@ class UserInfoTags extends StatefulWidget {
 }
 
 class _UserInfoTagsState extends State<UserInfoTags> {
-  late Future<UserData> userData;
+  late StreamController<UserData> _userDataController;
   var fetchUserData = FetchUser.fetchUserData;
 
   @override
   void initState() {
     super.initState();
-    userData = fetchUserData(widget.id);
+    _userDataController = StreamController<UserData>.broadcast();
+    _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _userDataController.close();
+    super.dispose();
+  }
+
+  void _loadUserData() async {
+    try {
+      UserData data = await fetchUserData(widget.id);
+      _userDataController.add(data);
+    } catch (error) {
+      print(error);
+      // Handle error if needed
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<UserData>(
-      future: userData,
+    return StreamBuilder<UserData>(
+      stream: _userDataController.stream,
+      initialData: null, // Initial data can be set based on your requirements
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           // Loading state
           return Center(
             child: CircularProgressIndicator(),
-          );
-        } else if (snapshot.hasError) {
-          print(snapshot.error);
-          // Error state
-          return Center(
-            child: Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 60,
-            ),
           );
         } else {
           // Data loaded successfully
@@ -63,17 +72,33 @@ class _UserInfoTagsState extends State<UserInfoTags> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            buildUserInfoTag('Full Name', userData.fullName),
-            buildUserInfoTag('Phone Number', userData.phoneNumber),
-            userData.isActive
-                ? buildUserInfoTag('Status', 'Active', color: Colors.green)
-                : buildUserInfoTag('Status', 'Inactive', color: Colors.red),
-          ],
+      child: InkWell(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserDetailPage(
+                userId: userData.id.toString(),
+              ),
+            ),
+          );
+          print(result);
+          if (result != null) {
+            _loadUserData(); // Reload user data when returning from UserDetailPage
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildUserInfoTag('Full Name', userData.fullName),
+              buildUserInfoTag('Phone Number', userData.phoneNumber),
+              userData.isActive
+                  ? buildUserInfoTag('Status', 'Active', color: Colors.green)
+                  : buildUserInfoTag('Status', 'Inactive', color: Colors.red),
+            ],
+          ),
         ),
       ),
     );
@@ -96,7 +121,7 @@ class _UserInfoTagsState extends State<UserInfoTags> {
             value,
             style: TextStyle(
               fontSize: 16,
-              color: color??Colors.black,
+              color: color ?? Colors.black,
             ),
           ),
         ],
@@ -105,40 +130,6 @@ class _UserInfoTagsState extends State<UserInfoTags> {
   }
 }
 
-class UserInfoTag extends StatelessWidget {
-  final String label;
-  final String value;
-
-  UserInfoTag({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
-    }
-}
 
 
 

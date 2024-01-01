@@ -127,8 +127,12 @@ class _UsersTabState extends State<UsersTab> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          leading: _isSearching ? const BackButton() : Container(),
-          title: _isSearching ? _buildSearchField() : Text('Users'),
+          leading: _isSearching ? const BackButton() : Icon(Icons.man,color: Theme.of(context).primaryColor,),
+          title: _isSearching ? _buildSearchField() : Text('Users',
+            style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 25),),
           actions: _buildActions(),
         ),
       body: _buildBody(),
