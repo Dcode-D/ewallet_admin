@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/login' ,
       builder: FlutterSmartDialog.init(),
       routes: {
-        '/home': (context) => const HomePage(),
+        '/home': (context) => HomePage(),
         '/login': (context) => const LoginPage(title: 'Login'),
       }
     );

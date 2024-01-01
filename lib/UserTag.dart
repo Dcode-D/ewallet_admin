@@ -1,57 +1,107 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
-
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:mobile_admin/configuration.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'UserDetailPage.dart';
+import 'Models/UserData.dart';
+import 'Utils/FetchUserData.dart';
 
-class UserInfoTags extends StatelessWidget {
-  final String fullName;
-  final String phoneNumber;
-  final String identifyID;
-  final DateTime birthday;
-  final bool isActive;
-  final String city;
-  final String job;
+class UserInfoTags extends StatefulWidget {
+  final String id;
 
-  UserInfoTags({
-    required this.fullName,
-    required this.phoneNumber,
-    required this.identifyID,
-    required this.birthday,
-    required this.isActive,
-    required this.city,
-    required this.job,
-  });
+  UserInfoTags({required this.id});
+
+  @override
+  _UserInfoTagsState createState() => _UserInfoTagsState();
+}
+
+class _UserInfoTagsState extends State<UserInfoTags> {
+  late Future<UserData> userData;
+  var fetchUserData = FetchUser.fetchUserData;
+
+  @override
+  void initState() {
+    super.initState();
+    userData = fetchUserData(widget.id);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      itemCount: 7, // Number of tags
-      itemBuilder: (context, index) {
-        return buildUserInfoTag(context, index);
+    return FutureBuilder<UserData>(
+      future: userData,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Loading state
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        } else if (snapshot.hasError) {
+          print(snapshot.error);
+          // Error state
+          return Center(
+            child: Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 60,
+            ),
+          );
+        } else {
+          // Data loaded successfully
+          return buildUserInfo(snapshot.data!);
+        }
       },
     );
   }
 
-  Widget buildUserInfoTag(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        return UserInfoTag(label: 'Full Name', value: fullName);
-      case 1:
-        return UserInfoTag(label: 'Phone Number', value: phoneNumber);
-      case 2:
-        return UserInfoTag(label: 'Identify ID', value: identifyID);
-      case 3:
-        return UserInfoTag(label: 'Birthday', value: '${birthday.toLocal()}'); // Format as needed
-      case 4:
-        return UserInfoTag(label: 'Active', value: isActive ? 'Yes' : 'No');
-      case 5:
-        return UserInfoTag(label: 'City', value: city ?? 'Not specified');
-      case 6:
-        return UserInfoTag(label: 'Job', value: job ?? 'Not specified');
-      default:
-        return SizedBox.shrink();
-    }
+  Widget buildUserInfo(UserData userData) {
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.all(5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            buildUserInfoTag('Full Name', userData.fullName),
+            buildUserInfoTag('Phone Number', userData.phoneNumber),
+            userData.isActive
+                ? buildUserInfoTag('Status', 'Active', color: Colors.green)
+                : buildUserInfoTag('Status', 'Inactive', color: Colors.red),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildUserInfoTag(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              color: color??Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -66,52 +116,29 @@ class UserInfoTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        // Handle tag tap, e.g., navigate to detail page
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => UserDetailsPage(label: label, value: value),
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '$label: ',
-              style: TextStyle(fontWeight: FontWeight.bold),
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            Text(value),
-            Icon(Icons.arrow_forward_ios, size: 16),
-          ],
-        ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(value),
+          ),
+        ],
       ),
     );
-  }
+    }
 }
 
-class UserDetailsPage extends StatelessWidget {
-  final String label;
-  final String value;
 
-  UserDetailsPage({
-    required this.label,
-    required this.value,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(label),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(value),
-      ),
-    );
-  }
-}

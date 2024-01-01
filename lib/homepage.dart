@@ -1,37 +1,55 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import 'package:mobile_admin/configuration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'UserTag.dart';
+import 'configuration.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _currentPageIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _currentPageIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.background,
-          title: Text('Home Page'),
-          bottom: TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.people), text: 'Users'),
-              Tab(icon: Icon(Icons.logout), text: 'Log Out'),
-            ],
+    return Scaffold(
+      body: _buildBody(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentPageIndex,
+        onTap: _onItemTapped,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Users',
           ),
-        ),
-        body: TabBarView(
-          children: [
-            UsersTab(),
-            LogOutTab(),
-          ],
-        ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout),
+            label: 'Log Out',
+          ),
+        ],
       ),
     );
+  }
+
+
+  Widget _buildBody() {
+    switch (_currentPageIndex) {
+      case 0:
+        return UsersTab();
+      case 1:
+        return LogOutTab();
+      default:
+        return Container();
+    }
   }
 }
 
@@ -45,6 +63,10 @@ class _UsersTabState extends State<UsersTab> {
   int currentPage = 1;
   bool isError = false;
   bool isLoading = false;
+  TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearching = false;
+
 
   @override
   void initState() {
@@ -54,7 +76,8 @@ class _UsersTabState extends State<UsersTab> {
   }
 
   Future<void> fetchUsers() async {
-    final apiUrl = Configuration.API_URL + "/admin/get_all_users/" + currentPage.toString();
+    final apiUrl =
+        Configuration.API_URL + "/admin/get_all_users/" + currentPage.toString();
     final prefs = await SharedPreferences.getInstance();
     var token = prefs.getString(Configuration.TOKEN_NAME) ?? '';
     try {
@@ -102,6 +125,86 @@ class _UsersTabState extends State<UsersTab> {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          leading: _isSearching ? const BackButton() : Container(),
+          title: _isSearching ? _buildSearchField() : Text('Users'),
+          actions: _buildActions(),
+        ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      autofocus: true,
+      decoration: InputDecoration(
+        hintText: "Search Data...",
+        border: InputBorder.none,
+        hintStyle: TextStyle(color: Colors.white30),
+      ),
+      style: TextStyle(color: Colors.white, fontSize: 16.0),
+      onChanged: (query) => updateSearchQuery(query),
+    );
+  }
+
+  List<Widget> _buildActions() {
+    if (_isSearching) {
+      return <Widget>[
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () {
+            if (_searchController == null ||
+                _searchController.text.isEmpty) {
+              Navigator.pop(context);
+              return;
+            }
+            _clearSearchQuery();
+          },
+        ),
+      ];
+    }
+
+    return <Widget>[
+      IconButton(
+        icon: const Icon(Icons.search),
+        onPressed: _startSearch,
+      ),
+    ];
+  }
+
+  void _startSearch() {
+    ModalRoute.of(context)
+        ?.addLocalHistoryEntry(LocalHistoryEntry(onRemove: _stopSearching));
+
+    setState(() {
+      _isSearching = true;
+    });
+  }
+
+  void updateSearchQuery(String newQuery) {
+    setState(() {
+      _searchQuery = newQuery;
+    });
+  }
+
+  void _stopSearching() {
+    _clearSearchQuery();
+
+    setState(() {
+      _isSearching = false;
+    });
+  }
+
+  void _clearSearchQuery() {
+    setState(() {
+      _searchController.clear();
+      updateSearchQuery("");
+    });
+  }
+
+  Widget _buildBody() {
     if (isError) {
       return Center(
         child: Column(
@@ -125,7 +228,8 @@ class _UsersTabState extends State<UsersTab> {
     return NotificationListener<ScrollEndNotification>(
       onNotification: (notification) {
         // Fetch more users when reaching the end of the list
-        if (notification.metrics.pixels == notification.metrics.maxScrollExtent) {
+        if (notification.metrics.pixels ==
+            notification.metrics.maxScrollExtent) {
           fetchUsers();
         }
         return true;
@@ -134,9 +238,7 @@ class _UsersTabState extends State<UsersTab> {
         itemCount: users.length + (isLoading ? 1 : 0), // +1 for loading indicator
         itemBuilder: (context, index) {
           if (index < users.length) {
-            return ListTile(
-              title: Text(users[index]),
-            );
+            return UserInfoTags(id: users[index]);
           } else {
             return Center(
               child: CircularProgressIndicator(),
@@ -144,6 +246,42 @@ class _UsersTabState extends State<UsersTab> {
           }
         },
       ),
+    );
+  }
+
+  void _showSearchBar() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Search Users'),
+          content: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Enter user name',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _searchQuery = _searchController.text;
+                // Perform search logic here based on _searchQuery
+                // You can filter your users list using the search query
+                // For simplicity, let's print the search query
+                print('Search Query: $_searchQuery');
+              },
+              child: Text('Search'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
