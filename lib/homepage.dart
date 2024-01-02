@@ -68,16 +68,23 @@ class _UsersTabState extends State<UsersTab> {
   bool _isSearching = false;
 
 
+
   @override
   void initState() {
     super.initState();
     // Call the API to fetch users when the tab is first displayed
     fetchUsers();
+    // _searchController.addListener(() {updateSearchQuery(_searchController.text);});
   }
 
   Future<void> fetchUsers() async {
-    final apiUrl =
+    var apiUrl =
         Configuration.API_URL + "/admin/get_all_users/" + currentPage.toString();
+    if(_searchQuery.isNotEmpty){
+      apiUrl += '?name=$_searchQuery';
+      apiUrl += '&phone=$_searchQuery';
+      apiUrl += '&id=$_searchQuery';
+    }
     final prefs = await SharedPreferences.getInstance();
     var token = prefs.getString(Configuration.TOKEN_NAME) ?? '';
     try {
@@ -127,7 +134,19 @@ class _UsersTabState extends State<UsersTab> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          leading: _isSearching ? const BackButton() : Icon(Icons.man,color: Theme.of(context).primaryColor,),
+          leading: _isSearching ?  BackButton(
+            onPressed: (){
+              // if (_searchController == null ||
+              //     _searchController.text.isEmpty) {
+              //   Navigator.pop(context);
+              //   return;
+              // }
+              setState(() {
+                _isSearching = false;
+              });
+              fetchUsers();
+            },
+            ) : Icon(Icons.man,color: Theme.of(context).primaryColor,),
           title: _isSearching ? _buildSearchField() : Text('Users',
             style: TextStyle(
                 color: Theme.of(context).primaryColor,
@@ -146,10 +165,12 @@ class _UsersTabState extends State<UsersTab> {
       decoration: InputDecoration(
         hintText: "Search Data...",
         border: InputBorder.none,
-        hintStyle: TextStyle(color: Colors.white30),
       ),
-      style: TextStyle(color: Colors.white, fontSize: 16.0),
-      onChanged: (query) => updateSearchQuery(query),
+      style: TextStyle(fontSize: 16.0),
+      onChanged: (query) {
+        updateSearchQuery(query);
+        fetchUsers();
+        },
     );
   }
 
@@ -159,12 +180,16 @@ class _UsersTabState extends State<UsersTab> {
         IconButton(
           icon: const Icon(Icons.clear),
           onPressed: () {
-            if (_searchController == null ||
-                _searchController.text.isEmpty) {
-              Navigator.pop(context);
-              return;
-            }
+            // if (_searchController == null ||
+            //     _searchController.text.isEmpty) {
+            //   Navigator.pop(context);
+            //   return;
+            // }
+            setState(() {
+              _isSearching = false;
+            });
             _clearSearchQuery();
+            fetchUsers();
           },
         ),
       ];
@@ -189,6 +214,8 @@ class _UsersTabState extends State<UsersTab> {
 
   void updateSearchQuery(String newQuery) {
     setState(() {
+      currentPage = 1;
+      users.clear();
       _searchQuery = newQuery;
     });
   }
