@@ -323,9 +323,12 @@ class LogOutTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: () async{
           // Add your log-out logic here
           // For simplicity, it's not implemented in this example
+          final prefs = await SharedPreferences.getInstance();
+          prefs.remove(Configuration.TOKEN_NAME);
+          Navigator.pushReplacementNamed(context, '/login');
         },
         child: Text('Log Out'),
       ),
