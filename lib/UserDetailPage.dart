@@ -68,7 +68,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
           transactionList.add(value[i]);
         }
         setState(() {
-          transactionList;
+          transactionList = transactionList.reversed.toList();
           _isErrorTrans = false; // Clear error if fetching is successful
         });
       });
